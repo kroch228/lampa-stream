@@ -28,11 +28,12 @@ anime intros, scrub with the keyboard, all in one place.
 ## Prerequisites
 
 - **Node.js ≥ 22.12.0**
-- **No TMDB token required** — a community TMDB key is bundled (same one Lampa
-  ships), so the catalog loads out of the box. Set your own in Settings if you want.
+- A **TMDB** Read Access Token (free) — [guide](tmdb-tutorial.md). Asked on first
+  run; stored encrypted in the OS keychain.
 - **No VPN required (Russia)** — TMDB (`api.themoviedb.org` / `image.tmdb.org`)
   is routed through the `tmdb-api.rootu.top` / `tmdb-img.rootu.top` proxy by
-  default. Toggle in Settings → TorrServer → «TMDB-прокси».
+  default, so the token validation and catalog work where TMDB is blocked.
+  Toggle in Settings → TorrServer → «TMDB-прокси».
 - For the **Торренты** source: a local **TorrServer** (YouROK MatriX) running on
   `http://127.0.0.1:8090` (or set its URL in Settings → TorrServer).
 - For **autosearch** of torrents (optional): a **Jackett** instance + API key.
@@ -65,9 +66,9 @@ npm install
 npm start          # any OS: vite build && electron .
 ```
 
-The catalog loads immediately — **no setup, no token, no VPN** (the TMDB proxy
-is on by default and a community key is bundled). Outside a region that blocks
-TMDB and want direct (faster) access? Turn the proxy off in Settings → TorrServer.
+On first launch you'll be prompted for a **TMDB Read Access Token** (stored
+encrypted in the OS keychain). The TMDB proxy is on by default, so the token
+validation and catalog load **without a VPN** even where TMDB is blocked.
 
 ## Player sources
 
@@ -233,10 +234,10 @@ developer does not endorse copyright infringement.
 **Торренты** (TorrServer). Больше никаких embed-плееров только с английским
 звуком.
 
-**Запуск:** `npm install` → `./launch.sh` (Linux) или `npm start`. Каталог
-грузится сразу — **без токена и без VPN**: вшит общий TMDB-ключ (как в Lampa),
-а TMDB-запросы идут через прокси `tmdb-api.rootu.top` (включён по умолчанию,
-тумблер в Настройках → TorrServer). Открой фильм/серию → Play → источник →
+**Запуск:** `npm install` → `./launch.sh` (Linux) или `npm start`. При первом
+запуске спросит TMDB-токен (хранится в OS keychain). **VPN не нужен**: TMDB
+идёт через прокси `tmdb-api.rootu.top` (включён по умолчанию, тумблер в
+Настройках → TorrServer). Открой фильм/серию → Play → источник →
 **«Онлайн»** (4K, русская озвучка, без подготовки) или **«Торренты»** (через
 локальный TorrServer, ищи через Jackett или вставь magnet).
 
@@ -256,9 +257,9 @@ developer does not endorse copyright infringement.
 **Collaps**（最高 4K DASH，俄语配音，可切换音轨）和 **TorrServer 种子**
 来源。不再受限于只有英语音轨的嵌入播放器。
 
-**运行：** `npm install` → `./launch.sh`（Linux）或 `npm start`。目录即开
-即用——**无需 token、无需 VPN**：内置社区 TMDB key（同 Lampa），TMDB 请求
-走 `tmdb-api.rootu.top` 代理（默认开启，可在设置 → TorrServer 切换）。
+**运行：** `npm install` → `./launch.sh`（Linux）或 `npm start`。首次启动
+会要求输入 TMDB token（存于 OS keychain）。**无需 VPN**：TMDB 请求走
+`tmdb-api.rootu.top` 代理（默认开启，可在设置 → TorrServer 切换）。
 打开电影/剧集 → 播放 → 来源按钮 → **«Онлайн»**
 （4K，俄语配音，开箱即用）或 **«Торренты»**（通过本地 TorrServer，可用
 Jackett 搜索或粘贴磁力链接）。

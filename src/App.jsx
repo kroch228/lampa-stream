@@ -17,7 +17,7 @@ import {
   ACCENT_PRESETS,
 } from "./utils/appearance";
 import { collectBackupData } from "./utils/backup";
-import { tmdbFetch, setApiErrorHandlers, BUNDLED_TMDB_KEY } from "./utils/api";
+import { tmdbFetch, setApiErrorHandlers } from "./utils/api";
 import { clearAppCaches } from "./utils/storage";
 
 import Sidebar from "./components/Sidebar";
@@ -323,9 +323,7 @@ export default function App() {
     let mounted = true;
     secureStorage.get("apikey").then((val) => {
       if (!mounted) return;
-      // Fall back to the bundled community TMDB key so the catalog works with
-      // no per-user token. A user who entered their own key overrides it.
-      setApiKey(val || BUNDLED_TMDB_KEY);
+      setApiKey(val || null);
       setApiKeyLoaded(true);
     });
     return () => {
@@ -375,13 +373,10 @@ export default function App() {
     }
     setApiKeyStatus("checking");
     const controller = new AbortController();
-    // v4 JWT → Bearer header; v3 api_key (bundled fallback) → ?api_key= query.
-    const isV4Jwt = apiKey.startsWith("eyJ");
-    const url = isV4Jwt
-      ? "https://api.themoviedb.org/3/configuration"
-      : `https://api.themoviedb.org/3/configuration?api_key=${encodeURIComponent(apiKey)}`;
-    const headers = isV4Jwt ? { Authorization: `Bearer ${apiKey}` } : {};
-    fetch(url, { headers, signal: controller.signal })
+    fetch("https://api.themoviedb.org/3/configuration", {
+      headers: { Authorization: `Bearer ${apiKey}` },
+      signal: controller.signal,
+    })
       .then((res) => {
         if (res.status === 401 || res.status === 403)
           setApiKeyStatus("invalid_token");
