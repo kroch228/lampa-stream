@@ -12,6 +12,20 @@ anime intros, scrub with the keyboard, all in one place.
 > (GPL-3.0). The online &amp; torrent pipelines mirror Lampa Desktop's
 > integration, reverse-engineered against the live Collaps and TorrServer APIs.
 
+## Downloads
+
+Prebuilt installers from the [v1.0.0 release](https://github.com/kroch228/lampa-stream/releases/tag/v1.0.0):
+
+| OS | File | Size |
+|-|-|-|
+| Windows | [Lampa-Stream-Setup-2.5.0.exe](https://github.com/kroch228/lampa-stream/releases/download/v1.0.0/Lampa-Stream-Setup-2.5.0.exe) | ~87 MB (NSIS) |
+| macOS | [Lampa-Stream-2.5.0-universal.dmg](https://github.com/kroch228/lampa-stream/releases/download/v1.0.0/Lampa-Stream-2.5.0-universal.dmg) | ~190 MB (universal) |
+| Linux | `.AppImage` / `.deb` / `.rpm` / `.pacman` | see release page |
+
+**Windows:** the installer is unsigned, so SmartScreen warns on first run —
+click **More info → Run anyway**. This is normal for open-source apps without a
+paid code-signing certificate.
+
 ## Stack
 
 | Layer | Tech |
