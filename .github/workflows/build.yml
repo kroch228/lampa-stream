@@ -39,6 +39,10 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Install bsdtar (Linux, needed by fpm for pacman)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libarchive-tools
+
       - name: Cache electron + electron-builder
         uses: actions/cache@v4
         with:
