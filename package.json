@@ -180,7 +180,8 @@
       "de"
     ],
     "asarUnpack": [
-      "src/styles/fonts/**"
+      "src/styles/fonts/**",
+      "dist/vendor/**"
     ]
   }
 }
