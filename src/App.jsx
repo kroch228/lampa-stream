@@ -17,7 +17,7 @@ import {
   ACCENT_PRESETS,
 } from "./utils/appearance";
 import { collectBackupData } from "./utils/backup";
-import { tmdbFetch, setApiErrorHandlers } from "./utils/api";
+import { tmdbFetch, setApiErrorHandlers, setTmdbProxyBase, tmdbApiBase } from "./utils/api";
 import { clearAppCaches } from "./utils/storage";
 
 import Sidebar from "./components/Sidebar";
@@ -321,6 +321,13 @@ export default function App() {
   // ── Load API key from secure storage on startup ──
   useEffect(() => {
     let mounted = true;
+    // Wire the main-process TMDB proxy base (local 127.0.0.1 forwarder) so the
+    // renderer's TMDB calls go through it when enabled — bypasses the regional
+    // TMDB block with a system VPN and preserves the Bearer token.
+    window.electron?.tmdbProxyGet?.().then((p) => {
+      if (!mounted) return;
+      setTmdbProxyBase(p && p.on && p.port ? p.port : null);
+    }).catch(() => {});
     secureStorage.get("apikey").then((val) => {
       if (!mounted) return;
       setApiKey(val || null);
@@ -373,7 +380,7 @@ export default function App() {
     }
     setApiKeyStatus("checking");
     const controller = new AbortController();
-    fetch("https://api.themoviedb.org/3/configuration", {
+    fetch(`${tmdbApiBase()}/configuration`, {
       headers: { Authorization: `Bearer ${apiKey}` },
       signal: controller.signal,
     })

@@ -1,5 +1,21 @@
-const TMDB_BASE = "https://api.themoviedb.org/3";
-const IMG_BASE = "https://image.tmdb.org/t/p";
+// TMDB endpoints. When the main-process TMDB proxy is ON (default, for
+// Russia/no-VPN), the renderer calls the local proxy http://127.0.0.1:<port>
+// which forwards to the real api.themoviedb.org / image.tmdb.org with the
+// user's Bearer token preserved. setTmdbProxyBase() is called by App on
+// startup after querying the proxy state.
+let TMDB_BASE = "https://api.themoviedb.org/3";
+let IMG_BASE = "https://image.tmdb.org/t/p";
+export function setTmdbProxyBase(port) {
+  if (port) {
+    TMDB_BASE = `http://127.0.0.1:${port}/api/3`;
+    IMG_BASE = `http://127.0.0.1:${port}/img/t/p`;
+  } else {
+    TMDB_BASE = "https://api.themoviedb.org/3";
+    IMG_BASE = "https://image.tmdb.org/t/p";
+  }
+}
+export const tmdbApiBase = () => TMDB_BASE;
+export const tmdbImgBase = () => IMG_BASE;
 
 // ── TMDB metadata language ────────────────────────────────────────────────────
 // Read lazily from localStorage so it always reflects the current setting.

@@ -317,43 +317,132 @@ function createWindow() {
     },
   );
 
-  // ── TMDB proxy (Russia / no-VPN) ────────────────────────────────────────────
-  // api.themoviedb.org and image.tmdb.org are blocked/throttled in some regions
-  // (Russia). Route them through the community proxy (same one Lampa uses):
-  //   api.themoviedb.org  → tmdb-api.rootu.top  (HTTP, relays ?api_key=)
-  //   image.tmdb.org      → tmdb-img.rootu.top  (HTTP, no key needed)
-  // The renderer keeps calling the original TMDB URLs; the main process
-  // rewrites the request host at the network layer, so no renderer/CORS changes.
-  // Default ON; toggle via the tmdb-proxy-set IPC (Settings → TorrServer).
+  // ── TMDB proxy (Russia / no-VPN, via DoH IPv4) ──────────────────────────────
+  // A local HTTP proxy in the main process that forwards to the REAL
+  // api.themoviedb.org / image.tmdb.org, preserving the user's Bearer token.
+  // The renderer calls http://127.0.0.1:<port>/api/3/... (and /img/t/p/...);
+  // main forwards over HTTPS to TMDB with the original headers + permissive CORS.
+  // This works with the user's v4 Read Access Token (the public community v3
+  // proxies only accept v3 api_key and reject Bearer JWTs with 401).
+  //
+  // DNS: in Russia the system resolver returns TMDB's IPv6 (CloudFront), which
+  // ISPs block/throttle. We resolve via DNS-over-HTTPS (Cloudflare 1.1.1.1) to
+  // a real IPv4 and connect with family:4. No VPN needed. Falls back to the
+  // system resolver if DoH fails.
   let tmdbProxyOn = true;
-  const TMDB_API_PROXY = "http://tmdb-api.rootu.top";
-  const TMDB_IMG_PROXY = "http://tmdb-img.rootu.top";
-  const rewriteTmdb = (rawUrl, proxyBase) => {
-    try {
-      const u = new URL(rawUrl);
-      const proxy = new URL(proxyBase);
-      return proxy.origin + u.pathname + u.search + u.hash;
-    } catch {
-      return rawUrl;
+  const httpServerLib = require("http");
+  const httpsServerLib = require("https");
+  const dnsLib = require("dns");
+  const dohCache = new Map(); // host → { ips, expiresAt }
+  const DOH_TTL = 60 * 1000;
+  async function dohResolve(host) {
+    const now = Date.now();
+    const hit = dohCache.get(host);
+    if (hit && hit.ips.length && now < hit.expiresAt) return hit.ips;
+    const providers = [
+      "https://1.1.1.1/dns-query?name=" + encodeURIComponent(host) + "&type=A",
+      "https://8.8.8.8/resolve?name=" + encodeURIComponent(host) + "&type=A",
+    ];
+    for (const url of providers) {
+      try {
+        const body = await new Promise((resolve, reject) => {
+          const u = new URL(url);
+          const lib = u.protocol === "https:" ? httpsServerLib : httpServerLib;
+          const r = lib.get(
+            url,
+            { headers: { accept: "application/dns-json" }, family: 4 },
+            (res) => {
+              let d = "";
+              res.on("data", (c) => (d += c));
+              res.on("end", () => resolve(d));
+            },
+          );
+          r.on("error", reject);
+          r.setTimeout(4000, () => r.destroy(new Error("doh timeout")));
+        });
+        const json = JSON.parse(body);
+        const ips = (json.Answer || [])
+          .filter((a) => a.type === 1)
+          .map((a) => a.data)
+          .filter((d) => /^\d+\.\d+\.\d+\.\d+$/.test(d));
+        if (ips.length) {
+          dohCache.set(host, { ips, expiresAt: now + DOH_TTL });
+          return ips;
+        }
+      } catch {}
     }
-  };
-  session.defaultSession.webRequest.onBeforeRequest(
-    { urls: ["*://api.themoviedb.org/*", "*://image.tmdb.org/*"] },
-    (details, callback) => {
-      if (!tmdbProxyOn) return callback({});
-      const isApi = details.url.includes("api.themoviedb.org");
-      const redirectURL = rewriteTmdb(
-        details.url,
-        isApi ? TMDB_API_PROXY : TMDB_IMG_PROXY,
-      );
-      if (redirectURL === details.url) return callback({});
-      callback({ redirectURL });
-    },
-  );
-  ipcMain.handle("tmdb-proxy-get", () => ({ on: tmdbProxyOn }));
+    // Fallback: system resolver, IPv4 only.
+    try {
+      const sys = await dnsLib.promises.lookup(host, { family: 4 });
+      return [sys.address];
+    } catch {
+      return [];
+    }
+  }
+  // Custom lookup for https.request: (hostname, options, callback)
+  function dohLookup(hostname, _opts, cb) {
+    dohResolve(hostname)
+      .then((ips) => {
+        if (!ips.length) return cb(new Error("DNS resolve failed for " + hostname));
+        cb(null, ips[0], 4);
+      })
+      .catch((e) => cb(e));
+  }
+  function forwardTmdb(req, res, target) {
+    const upstream = new URL(target);
+    const opts = {
+      method: req.method,
+      hostname: upstream.hostname,
+      port: upstream.port || 443,
+      path: upstream.pathname + upstream.search,
+      headers: { ...req.headers, host: upstream.host },
+      servername: upstream.hostname, // SNI = real host (TLS cert match)
+      lookup: dohLookup,
+      family: 4,
+    };
+    delete opts.headers["origin"];
+    delete opts.headers["referer"];
+    const up = httpsServerLib.request(opts, (r) => {
+      const headers = { ...r.headers };
+      headers["access-control-allow-origin"] = "*";
+      headers["access-control-allow-headers"] = "*";
+      res.writeHead(r.statusCode, headers);
+      r.pipe(res);
+    });
+    up.on("error", (e) => {
+      res.writeHead(502, { "access-control-allow-origin": "*", "content-type": "application/json" });
+      res.end(JSON.stringify({ error: "TMDB proxy upstream error", message: e.message }));
+    });
+    up.setTimeout(20000, () => up.destroy(new Error("timeout")));
+    req.pipe(up);
+  }
+  const tmdbProxyServer = httpServerLib.createServer((req, res) => {
+    // CORS preflight
+    if (req.method === "OPTIONS") {
+      res.writeHead(204, {
+        "access-control-allow-origin": "*",
+        "access-control-allow-headers": "*",
+        "access-control-allow-methods": "GET, OPTIONS",
+      });
+      return res.end();
+    }
+    if (req.url.startsWith("/api/")) {
+      return forwardTmdb(req, res, "https://api.themoviedb.org" + req.url.slice(4));
+    }
+    if (req.url.startsWith("/img/")) {
+      return forwardTmdb(req, res, "https://image.tmdb.org" + req.url.slice(4));
+    }
+    res.writeHead(404, { "access-control-allow-origin": "*" });
+    res.end("not found");
+  });
+  let tmdbProxyPort = 0;
+  tmdbProxyServer.listen(0, "127.0.0.1", () => {
+    tmdbProxyPort = tmdbProxyServer.address().port;
+  });
+  ipcMain.handle("tmdb-proxy-get", () => ({ on: tmdbProxyOn, port: tmdbProxyPort }));
   ipcMain.handle("tmdb-proxy-set", (_, { on }) => {
     tmdbProxyOn = !!on;
-    return { on: tmdbProxyOn };
+    return { on: tmdbProxyOn, port: tmdbProxyPort };
   });
 
   // -- Lazy session setup ----------------------------------------------------

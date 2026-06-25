@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { StreambertLogo, PlayIcon } from "./Icons";
-
-const TMDB_BASE = "https://api.themoviedb.org/3";
+import { tmdbApiBase } from "../utils/api";
 
 async function validateToken(token) {
+  const TMDB_BASE = tmdbApiBase();
   // Step 1: Can we reach TMDB at all?
   try {
     const pingRes = await fetch(`${TMDB_BASE}/configuration`, {
