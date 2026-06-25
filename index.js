@@ -317,6 +317,45 @@ function createWindow() {
     },
   );
 
+  // ── TMDB proxy (Russia / no-VPN) ────────────────────────────────────────────
+  // api.themoviedb.org and image.tmdb.org are blocked/throttled in some regions
+  // (Russia). Route them through the community proxy (same one Lampa uses):
+  //   api.themoviedb.org  → tmdb-api.rootu.top  (HTTP, relays ?api_key=)
+  //   image.tmdb.org      → tmdb-img.rootu.top  (HTTP, no key needed)
+  // The renderer keeps calling the original TMDB URLs; the main process
+  // rewrites the request host at the network layer, so no renderer/CORS changes.
+  // Default ON; toggle via the tmdb-proxy-set IPC (Settings → TorrServer).
+  let tmdbProxyOn = true;
+  const TMDB_API_PROXY = "http://tmdb-api.rootu.top";
+  const TMDB_IMG_PROXY = "http://tmdb-img.rootu.top";
+  const rewriteTmdb = (rawUrl, proxyBase) => {
+    try {
+      const u = new URL(rawUrl);
+      const proxy = new URL(proxyBase);
+      return proxy.origin + u.pathname + u.search + u.hash;
+    } catch {
+      return rawUrl;
+    }
+  };
+  session.defaultSession.webRequest.onBeforeRequest(
+    { urls: ["*://api.themoviedb.org/*", "*://image.tmdb.org/*"] },
+    (details, callback) => {
+      if (!tmdbProxyOn) return callback({});
+      const isApi = details.url.includes("api.themoviedb.org");
+      const redirectURL = rewriteTmdb(
+        details.url,
+        isApi ? TMDB_API_PROXY : TMDB_IMG_PROXY,
+      );
+      if (redirectURL === details.url) return callback({});
+      callback({ redirectURL });
+    },
+  );
+  ipcMain.handle("tmdb-proxy-get", () => ({ on: tmdbProxyOn }));
+  ipcMain.handle("tmdb-proxy-set", (_, { on }) => {
+    tmdbProxyOn = !!on;
+    return { on: tmdbProxyOn };
+  });
+
   // -- Lazy session setup ----------------------------------------------------
   // Player/trailer sessions are configured on the first webview attach or
   // when the pop-out window opens, whichever comes first.

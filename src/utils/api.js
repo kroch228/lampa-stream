@@ -1,6 +1,13 @@
 const TMDB_BASE = "https://api.themoviedb.org/3";
 const IMG_BASE = "https://image.tmdb.org/t/p";
 
+// Bundled community TMDB v3 api_key (same one Lampa ships). Lets the app work
+// with no per-user token: the catalog loads out of the box. The main process
+// optionally routes api.themoviedb.org / image.tmdb.org through a proxy
+// (tmdb-api.rootu.top / tmdb-img.rootu.top) so it works in regions where TMDB
+// is blocked (Russia) without a VPN. A user-entered key still overrides this.
+export const BUNDLED_TMDB_KEY = "4ef0d7355d9ffb5151e987764708ce96";
+
 // ── TMDB metadata language ────────────────────────────────────────────────────
 // Read lazily from localStorage so it always reflects the current setting.
 // Falls back to "en-US".
@@ -22,6 +29,20 @@ function withLanguage(path) {
 
 export const imgUrl = (path, size = "w500") =>
   path ? `${IMG_BASE}/${size}${path}` : null;
+
+// Build the auth for a TMDB request. v3 api_keys (32-char hex, like the bundled
+// one) go as a ?api_key= query param; v4 Read Access Tokens (JWTs starting with
+// "eyJ") go as an Authorization: Bearer header. Returns {url, headers}.
+function withTmdbAuth(basePath, apiKey) {
+  const key = apiKey || BUNDLED_TMDB_KEY;
+  const isV4Jwt = key.startsWith("eyJ");
+  if (isV4Jwt) {
+    return { url: `${TMDB_BASE}${basePath}`, headers: { Authorization: `Bearer ${key}` } };
+  }
+  const url = new URL(`${TMDB_BASE}${basePath}`);
+  url.searchParams.set("api_key", key);
+  return { url: url.toString(), headers: {} };
+}
 
 // Global auth-error callback, registered by App on mount
 let _onAuthError = null;
@@ -79,9 +100,8 @@ export const tmdbFetch = async (path, apiKey) => {
 
   let res;
   try {
-    res = await fetch(`${TMDB_BASE}${localizedPath}`, {
-      headers: { Authorization: `Bearer ${apiKey}` },
-    });
+    const { url, headers } = withTmdbAuth(localizedPath, apiKey);
+    res = await fetch(url, { headers });
   } catch {
     _releaseSlot();
     _onUnreachable?.();

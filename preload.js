@@ -202,4 +202,8 @@ contextBridge.exposeInMainWorld("electron", {
   // ── Collaps online source (Lampa online, multi-audio RU HLS) ───────────────
   collapsResolve: (args) => ipcRenderer.invoke("collaps-resolve", args),
   collapsFindKp: (args) => ipcRenderer.invoke("collaps-find-kp", args),
+
+  // ── TMDB proxy (Russia / no-VPN) ───────────────────────────────────────────
+  tmdbProxyGet: () => ipcRenderer.invoke("tmdb-proxy-get"),
+  tmdbProxySet: (args) => ipcRenderer.invoke("tmdb-proxy-set", args),
 });

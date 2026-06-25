@@ -20,6 +20,7 @@ export default function TorrServerSettingsSection() {
   const [saved, setSaved] = useState(false);
   const [test, setTest] = useState(null); // {ok,matrix,base,error}
   const [testing, setTesting] = useState(false);
+  const [tmdbProxy, setTmdbProxy] = useState(true);
 
   useEffect(() => {
     (async () => {
@@ -31,9 +32,19 @@ export default function TorrServerSettingsSection() {
       setExternalPlayer(c.externalPlayer || "auto");
       // Auto-test on load so the user sees connection state immediately
       doTest(c.torrserverUrl || "http://127.0.0.1:8090");
+      // Load TMDB proxy state (default on — for Russia / no-VPN)
+      try {
+        const p = await window.electron?.tmdbProxyGet?.();
+        if (p) setTmdbProxy(!!p.on);
+      } catch {}
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const toggleTmdbProxy = async (on) => {
+    setTmdbProxy(on);
+    try { await window.electron?.tmdbProxySet?.({ on }); } catch {}
+  };
 
   const save = async () => {
     await torrSetCfg({ torrserverUrl: torrserverUrl.trim() || "http://127.0.0.1:8090", jackettUrl: jackettUrl.trim(), jackettKey: jackettKey.trim(), preferAudio, externalPlayer });
@@ -71,6 +82,46 @@ export default function TorrServerSettingsSection() {
         <b>TorrServer</b> (YouROK MatriX). Русская озвучка берётся из самих
         раздач. Запустите TorrServer (по умолчанию{" "}
         <code>http://127.0.0.1:8090</code>) — он уже настроен у вас через Lampa.
+      </div>
+
+      {/* TMDB proxy toggle — also lives in this "Lampa integration" section */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+          padding: "12px 14px",
+          background: "var(--surface2)",
+          border: "1px solid var(--border)",
+          borderRadius: 8,
+          marginBottom: 16,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 14, color: "var(--text)", fontWeight: 600 }}>
+            TMDB-прокси (Россия, без VPN)
+          </div>
+          <div style={{ fontSize: 12, color: "var(--text3)", marginTop: 3, lineHeight: 1.5 }}>
+            Проксирует каталог TMDB (api.themoviedb.org) и постеры через
+            tmdb-api.rootu.top / tmdb-img.rootu.top. Включите, если TMDB
+            заблокирован в вашем регионе. Каталог работает без личного токена
+            (вшит общий ключ).
+          </div>
+        </div>
+        <button
+          className="btn"
+          onClick={() => toggleTmdbProxy(!tmdbProxy)}
+          style={{
+            flexShrink: 0,
+            color: tmdbProxy ? "#fff" : "var(--text2)",
+            background: tmdbProxy ? "var(--red)" : "var(--surface3)",
+            border: tmdbProxy ? "1px solid transparent" : "1px solid var(--border)",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {tmdbProxy ? "Включён" : "Выключен"}
+        </button>
       </div>
 
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
