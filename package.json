@@ -12,6 +12,8 @@
   "scripts": {
     "dev": "vite build --watch",
     "start": "vite build && electron .",
+    "postinstall": "node scripts/ensure-electron.js",
+    "ensure-electron": "node scripts/ensure-electron.js",
     "dist": "cross-env ELECTRON_DIST=1 vite build && npm run dist:linux && npm run dist:win && npm run dist:mac",
     "dist:linux": "cross-env ELECTRON_DIST=1 vite build && electron-builder --linux deb rpm AppImage pacman --publish never",
     "dist:deb": "cross-env ELECTRON_DIST=1 vite build && electron-builder --linux deb --publish never",
