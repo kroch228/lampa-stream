@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Local electron binary (npm postinstall sometimes fetches incompletely)
+node_modules/electron/dist/electron
+node_modules/electron/path.txt
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment / secrets — never commit
+.env
+.env.local
+.env.*.local
+
+# TorrServer / runtime config (generated at runtime, may contain your Jackett key)
+lampa-stream-torrserver.json
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Claude / agent local state
+.claude/
+.pigmemory/
+
+# Streambert leftovers
+temp/
+download_config.ini
+*secret.txt

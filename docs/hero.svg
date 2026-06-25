@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 360" width="1280" height="360" role="img" aria-labelledby="t d">
+  <title id="t">Lampa-Stream — Streambert UI with Lampa's Russian-audio online &amp; torrent player</title>
+  <desc id="d">Banner for the Lampa-Stream desktop app: a unified movie player combining Streambert's interface with Lampa's Collaps online source and TorrServer torrent engine, 4K DASH playback with Russian dub switching.</desc>
+
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a0708"/>
+      <stop offset="1" stop-color="#140b0e"/>
+    </linearGradient>
+    <linearGradient id="sweep" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ff3366" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#ff3366" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#6633ff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="tail" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#00e5ff" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#00e5ff" stop-opacity="0.6"/>
+      <stop offset="1" stop-color="#6633ff" stop-opacity="0"/>
+    </linearGradient>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0V32" fill="none" stroke="#ffffff" stroke-opacity="0.04" stroke-width="1"/>
+    </pattern>
+    <linearGradient id="play" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff3366"/>
+      <stop offset="1" stop-color="#ff9966"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1280" height="360" fill="url(#bg)"/>
+  <rect width="1280" height="360" fill="url(#grid)"/>
+
+  <!-- top sweep stripe -->
+  <rect x="0" y="0" width="1280" height="6" fill="url(#sweep)"/>
+  <!-- bottom tail stripe -->
+  <rect x="0" y="354" width="1280" height="6" fill="url(#tail)"/>
+
+  <!-- version chip -->
+  <g transform="translate(1110 38)">
+    <rect x="0" y="0" width="130" height="34" rx="17" fill="none" stroke="#ff3366" stroke-opacity="0.6" stroke-width="1.5"/>
+    <text x="65" y="22" font-family="'JetBrains Mono','Fira Code',ui-monospace,monospace" font-size="13" fill="#ff9966" text-anchor="middle" letter-spacing="1">v 1.0.0 · 4K</text>
+  </g>
+
+  <!-- title block -->
+  <text x="80" y="150" font-family="'SF Pro Display','Inter',system-ui,sans-serif" font-weight="900" font-size="78" fill="#f5f3f2" letter-spacing="-2">LAMPA-STREAM</text>
+  <rect x="82" y="168" width="180" height="4" rx="2" fill="url(#play)"/>
+  <text x="80" y="206" font-family="'JetBrains Mono','Fira Code',ui-monospace,monospace" font-size="17" fill="#c8c2c0" letter-spacing="3">STREAMBERT UI · COLLAPS ONLINE · TORRSERVER · 4K DASH · RU DUB</text>
+
+  <!-- domain glyph: play button + audio waveform -->
+  <g transform="translate(80 250)">
+    <!-- play disc -->
+    <circle cx="40" cy="30" r="30" fill="url(#play)"/>
+    <path d="M33 16 L58 30 L33 44 Z" fill="#0a0708"/>
+    <!-- waveform -->
+    <g transform="translate(96 30)" stroke="#00e5ff" stroke-width="3" stroke-linecap="round">
+      <line x1="0" y1="0" x2="0" y2="0" transform="translate(0 -10)"/>
+      <line x1="16" y1="-18" x2="16" y2="18"/>
+      <line x1="32" y1="-26" x2="32" y2="26"/>
+      <line x1="48" y1="-14" x2="48" y2="14"/>
+      <line x1="64" y1="-22" x2="64" y2="22"/>
+      <line x1="80" y1="-8" x2="80" y2="8"/>
+      <line x1="96" y1="-30" x2="96" y2="30"/>
+      <line x1="112" y1="-16" x2="112" y2="16"/>
+      <line x1="128" y1="-24" x2="128" y2="24"/>
+      <line x1="144" y1="-10" x2="144" y2="10"/>
+      <line x1="160" y1="-20" x2="160" y2="20"/>
+      <line x1="176" y1="-6" x2="176" y2="6"/>
+      <line x1="192" y1="-28" x2="192" y2="28"/>
+      <line x1="208" y1="-14" x2="208" y2="14"/>
+      <line x1="224" y1="-22" x2="224" y2="22"/>
+      <line x1="240" y1="-8" x2="240" y2="8"/>
+    </g>
+    <!-- 4K badge -->
+    <g transform="translate(360 6)">
+      <rect x="0" y="0" width="74" height="46" rx="8" fill="none" stroke="#00e5ff" stroke-opacity="0.55" stroke-width="1.5"/>
+      <text x="37" y="31" font-family="'SF Pro Display','Inter',sans-serif" font-weight="800" font-size="20" fill="#00e5ff" text-anchor="middle">4K</text>
+    </g>
+  </g>
+
+  <!-- bottom category strip -->
+  <text x="80" y="326" font-family="'JetBrains Mono','Fira Code',ui-monospace,monospace" font-size="13" fill="#7d7775" letter-spacing="2.5">MULTI-AUDIO · INTRO SKIP · TORRENTS · SUBTITLES · KEYBOARD · CROSS-PLATFORM</text>
+</svg>
