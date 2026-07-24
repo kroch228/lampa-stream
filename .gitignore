@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env*
+.pigmemory/
+.playwright-mcp/
+*.log
+.DS_Store
