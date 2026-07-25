@@ -1,0 +1,20 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/tmdb/:path*",
+      "destination": "/api/tmdb"
+    },
+    {
+      "source": "/api/room/:path*",
+      "destination": "/api/room"
+    },
+    {
+      "source": "/api/collaps/:path*",
+      "destination": "/api/collaps"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
