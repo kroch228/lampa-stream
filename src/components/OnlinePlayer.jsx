@@ -127,6 +127,13 @@ export default function OnlinePlayer({
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(1);
+  // Ref mirror of volume/muted (same pattern as saveRef/markWatchedRef above) so
+  // the engine-attach effect (and its event handlers, registered once per
+  // stream) can always read the LATEST user-set volume/mute without needing
+  // them in its dependency array (which would tear down and re-create the
+  // dash.js/hls.js engine on every volume tick).
+  const volumeRef = useRef(1); volumeRef.current = volume;
+  const mutedRef = useRef(false); mutedRef.current = muted;
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
   const [buffered, setBuffered] = useState(0);
@@ -368,6 +375,23 @@ export default function OnlinePlayer({
     // otherwise we'd attach a new Hls to a gone video and leak it.
     let disposed = false;
 
+    // Re-apply the user's previously-set volume/mute to the underlying
+    // <video> element. dash.js's player.initialize()/reset() and hls.js's
+    // attachMedia() do NOT preserve the element's .volume across a source
+    // swap in all browsers — and even when the element itself is reused,
+    // dash.js's internal VideoModel can reset playback properties on
+    // (re)initialize. Without this, switching episodes silently resets
+    // playback to 100% while the UI (bound to React state) still shows the
+    // old value. Call this right after the new source/engine attaches
+    // (STREAM_INITIALIZED / MANIFEST_PARSED) and again on loadedmetadata as
+    // a safety net for any engine/browser that applies it late.
+    const reapplyVolume = () => {
+      try {
+        v.volume = volumeRef.current;
+        v.muted = mutedRef.current;
+      } catch {}
+    };
+
     const attachDash = async () => {
       if (!stream.dash) return false;
       try {
@@ -439,6 +463,7 @@ export default function OnlinePlayer({
         player.on(EVENTS.STREAM_INITIALIZED, () => {
           buildDashQuality();
           buildDashAudio();
+          reapplyVolume();
           resumeAt(v);
           v.play().catch(() => {});
         });
@@ -470,7 +495,7 @@ export default function OnlinePlayer({
       if (!stream.hls) { setState("error"); setError("Поток недоступен (нет DASH/HLS)"); return; }
       const Hls = await loadHls();
       if (disposed) return; // effect cleaned up while hls.js was loading
-      if (!Hls.isSupported()) { v.src = stream.hls; v.play().catch(() => {}); return; }
+      if (!Hls.isSupported()) { v.src = stream.hls; reapplyVolume(); v.play().catch(() => {}); return; }
       // On mobile, cap to player size + use ABR (Auto) so cellular users don't
       // pull 4K segments into a 480px player. Desktop keeps best-quality default.
       const isMobile = typeof window !== "undefined" && (
@@ -502,6 +527,7 @@ export default function OnlinePlayer({
           const origIdx = (hls.levels || []).findIndex((l) => l.height === bestHlsLevel);
           if (origIdx >= 0) { hls.currentLevel = origIdx; setCurrentLevel(0); }
         }
+        reapplyVolume();
         resumeAt(v);
         v.play().catch(() => {});
       });
@@ -592,6 +618,11 @@ export default function OnlinePlayer({
     const onProgress = () => { try { if (v.buffered?.length) setBuffered(v.buffered.end(v.buffered.length - 1) || 0); } catch {} };
     const onLoadedMeta = () => {
       setDuration(v.duration || 0);
+      // Safety net: re-apply the user's volume/mute here too, in case the
+      // engine (dash.js/hls.js) attaches the new source/track before our
+      // STREAM_INITIALIZED/MANIFEST_PARSED re-apply runs, or resets it
+      // afterwards on internal re-init. Cheap no-op if already correct.
+      try { v.volume = volumeRef.current; v.muted = mutedRef.current; } catch {}
       resumeAt(v);
     };
     v.addEventListener("timeupdate", onTime); v.addEventListener("durationchange", onDur);

@@ -18,10 +18,40 @@ if (!window.electron) {
   const LS_TMDB = "lampa_stream_tmdb_token";
 
   // ── Collaps browser-side resolver (inlined, no separate module needed) ──────
-  // The browser fetches the embed HTML from api.delivembd.ws (CORS ok),
-  // parses makePlayer, returns the stream URL. Segment tokens match the
-  // browser's IP → no 410.
-  const COLLAPS_EMBED = "https://api.delivembd.ws/embed/";
+  // The browser fetches the embed HTML, parses makePlayer, returns the
+  // stream URL.
+  //
+  // Russia/no-VPN: api.delivembd.ws and *.interkh.com (the Collaps embed +
+  // CDN hosts) are blocked/throttled for many Russian ISPs, even though
+  // there's no such block on Vercel's own network. So — unlike the comment
+  // that used to be here — we do NOT hit these hosts directly from the
+  // browser anymore. Instead every request (embed HTML, the DASH/HLS
+  // manifest, and its segments) is routed through the /api/collaps
+  // serverless proxy (see api/collaps.js), which runs on Vercel's
+  // infrastructure and forwards to the real host. Because the proxy (not
+  // the browser) is what ultimately talks to the Collaps CDN, "the same IP
+  // must resolve the embed AND fetch the segments" is still satisfied —
+  // it's just Vercel's IP throughout instead of the browser's.
+  const COLLAPS_HOSTS = { EMBED: "api.delivembd.ws" };
+  const collapsProxyUrl = (host, pathAndQuery) =>
+    `/api/collaps/h/${encodeURIComponent(host)}${pathAndQuery.startsWith("/") ? "" : "/"}${pathAndQuery}`;
+  // Rewrite an absolute Collaps CDN URL (api.delivembd.ws or *.interkh.com)
+  // to go through our proxy instead. Non-Collaps / relative URLs are
+  // returned unchanged (dash.js/hls.js resolve relative URLs against the
+  // manifest's own — already proxied — URL, so they end up proxied too).
+  function collapsifyUrl(u) {
+    if (!u) return u;
+    try {
+      const parsed = new URL(u, location.origin);
+      const host = parsed.hostname.toLowerCase();
+      const isCollaps = host === COLLAPS_HOSTS.EMBED || host.endsWith(".interkh.com");
+      if (!isCollaps) return u;
+      return collapsProxyUrl(host, parsed.pathname + parsed.search);
+    } catch {
+      return u;
+    }
+  }
+  const COLLAPS_EMBED = collapsProxyUrl(COLLAPS_HOSTS.EMBED, "/embed/");
 
   function extractMakePlayer(html) {
     const i = html.indexOf("makePlayer({");
@@ -96,6 +126,16 @@ if (!window.electron) {
       if (ccArr) { try { const cc = JSON.parse(ccArr); subtitles = cc.map((c, i) => ({ url: c.url, name: c.name || "Sub " + (i + 1) })); } catch {} }
     }
     if (!hls && !dash) return { ok: false, error: "No stream URL" };
+    // Route the manifest (and subtitle) URLs through the /api/collaps proxy
+    // instead of hitting the CDN host (*.interkh.com / api.delivembd.ws)
+    // directly from the browser — see collapsifyUrl() above. dash.js/hls.js
+    // then resolve any RELATIVE segment/init URLs inside the manifest
+    // against this (already-proxied) URL, so those go through the proxy
+    // too automatically. Absolute segment URLs baked into the manifest are
+    // rewritten too, IF they point at a known Collaps host.
+    hls = collapsifyUrl(hls);
+    dash = collapsifyUrl(dash);
+    subtitles = subtitles.map((s) => ({ ...s, url: collapsifyUrl(s.url) }));
     return { ok: true, hls, dash, audioNames, subtitles, duration };
   }
 
